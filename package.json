@@ -1,0 +1,50 @@
+{
+  "name": "ai-code-reviewer",
+  "displayName": "AI Code Reviewer",
+  "version": "0.0.1",
+  "description": "AI-powered code review for the current file.",
+  "main": "./out/extension.js",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "activationEvents": [
+    "onCommand:aiCodeReviewer.reviewFile"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "aiCodeReviewer.reviewFile",
+        "title": "AI: Review Current File"
+      }
+    ],
+    "configuration": {
+      "title": "AI Code Reviewer",
+      "properties": {
+        "aiCodeReviewer.geminiApiKey": {
+          "type": "string",
+          "default": "AIzaSyCNSlrV0G8Dg8AVxAUQgL9DJPZXzF5B7K4",
+          "description": "Google Gemini API Key",
+          "scope": "machine"
+        },
+        "aiCodeReviewer.geminiModel": {
+          "type": "string",
+          "default": "gemini-1.5-flash",
+          "description": "Gemini model to use"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.2",
+    "typescript": "^5.9.3",
+    "vscode": "^1.1.37"
+  }
+}
