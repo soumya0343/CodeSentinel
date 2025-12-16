@@ -5,11 +5,11 @@ import { reviewCurrentFile } from "./commands/reviewFile";
 export function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(
     vscode.commands.registerCommand(
-      "aiCodeReviewer.reviewWorkspace",
+      "codeSentinel.reviewWorkspace",
       reviewWorkspace
     ),
     vscode.commands.registerCommand(
-      "aiCodeReviewer.reviewFile",
+      "codeSentinel.reviewFile",
       reviewCurrentFile
     )
   );

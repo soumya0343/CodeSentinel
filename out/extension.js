@@ -38,6 +38,6 @@ const vscode = __importStar(require("vscode"));
 const reviewWorkspace_1 = require("./commands/reviewWorkspace");
 const reviewFile_1 = require("./commands/reviewFile");
 function activate(ctx) {
-    ctx.subscriptions.push(vscode.commands.registerCommand("aiCodeReviewer.reviewWorkspace", reviewWorkspace_1.reviewWorkspace), vscode.commands.registerCommand("aiCodeReviewer.reviewFile", reviewFile_1.reviewCurrentFile));
+    ctx.subscriptions.push(vscode.commands.registerCommand("codeSentinel.reviewWorkspace", reviewWorkspace_1.reviewWorkspace), vscode.commands.registerCommand("codeSentinel.reviewFile", reviewFile_1.reviewCurrentFile));
 }
 //# sourceMappingURL=extension.js.map

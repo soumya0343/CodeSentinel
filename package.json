@@ -1,6 +1,6 @@
 {
-  "name": "ai-code-reviewer",
-  "displayName": "AI Code Reviewer",
+  "name": "codesentinel",
+  "displayName": "CodeSentinel",
   "version": "0.0.1",
   "description": "Offline-first code review with AI enhancement. Fast rule-based analysis with optional AI-powered insights for comprehensive code quality feedback.",
   "main": "./out/extension.js",
@@ -11,24 +11,24 @@
   "contributes": {
     "commands": [
       {
-        "command": "aiCodeReviewer.reviewFile",
-        "title": "AI: Review Current File"
+        "command": "codeSentinel.reviewFile",
+        "title": "CodeSentinel: Review Current File"
       },
       {
-        "command": "aiCodeReviewer.reviewWorkspace",
-        "title": "AI: Review Workspace"
+        "command": "codeSentinel.reviewWorkspace",
+        "title": "CodeSentinel: Review Workspace"
       }
     ],
     "configuration": {
-      "title": "AI Code Reviewer",
+      "title": "CodeSentinel",
       "properties": {
-        "aiCodeReviewer.openaiApiKey": {
+        "codeSentinel.openaiApiKey": {
           "type": "string",
           "default": "",
           "description": "OpenAI API key for AI-powered code analysis. Optional - extension works offline with rule-based reviews.",
           "scope": "machine"
         },
-        "aiCodeReviewer.openaiModel": {
+        "codeSentinel.openaiModel": {
           "type": "string",
           "default": "gpt-4o-mini",
           "description": "OpenAI model for AI code review (gpt-4o-mini, gpt-4, gpt-3.5-turbo, etc.)"

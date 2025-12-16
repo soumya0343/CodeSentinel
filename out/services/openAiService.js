@@ -40,7 +40,7 @@ exports.runOpenAIReview = runOpenAIReview;
 const openai_1 = __importDefault(require("openai"));
 const vscode = __importStar(require("vscode"));
 async function runOpenAIReview(prompt) {
-    const config = vscode.workspace.getConfiguration("aiCodeReviewer");
+    const config = vscode.workspace.getConfiguration("codeSentinel");
     const apiKey = config.get("openaiApiKey");
     const model = config.get("openaiModel") || "gpt-4o-mini";
     if (!apiKey) {

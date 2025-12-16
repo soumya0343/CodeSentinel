@@ -1,4 +1,4 @@
-# AI Code Reviewer
+# CodeSentinel
 
 A powerful VS Code extension that provides intelligent code review capabilities with both AI-powered analysis and offline rule-based validation. Get comprehensive code feedback that combines the depth of AI reasoning with the reliability of predefined best practices.
 
@@ -40,8 +40,8 @@ Configure your OpenAI API key for AI-powered reviews:
 
 ```json
 {
-  "aiCodeReviewer.openaiApiKey": "your-openai-api-key-here",
-  "aiCodeReviewer.openaiModel": "gpt-4o-mini"
+  "codeSentinel.openaiApiKey": "your-openai-api-key-here",
+  "codeSentinel.openaiModel": "gpt-4o-mini"
 }
 ```
 
@@ -54,7 +54,7 @@ Configure your OpenAI API key for AI-powered reviews:
 ### Review Current File
 1. Open any code file in VS Code
 2. Use Command Palette: `Ctrl+Shift+P` (Mac: `Cmd+Shift+P`)
-3. Run: `AI: Review Current File`
+3. Run: `CodeSentinel: Review Current File`
 4. Select your code scope (frontend/backend/both)
 5. Choose your tech stack
 6. Get instant code review results

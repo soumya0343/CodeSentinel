@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import * as vscode from "vscode";
 
 export async function runOpenAIReview(prompt: string): Promise<string> {
-  const config = vscode.workspace.getConfiguration("aiCodeReviewer");
+  const config = vscode.workspace.getConfiguration("codeSentinel");
   const apiKey = config.get<string>("openaiApiKey");
   const model = config.get<string>("openaiModel") || "gpt-4o-mini";
 

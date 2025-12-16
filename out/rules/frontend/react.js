@@ -9,8 +9,8 @@ exports.reactRules = [
         severity: "BLOCKER",
         appliesTo: { framework: ["react"], scope: ["frontend"] },
         check: (code) => code.split("\n").length > 150,
-        message: "Component exceeds 150 lines. Split logic using custom hooks or container/presenter pattern.",
-        rationale: "Prevents God Components and improves reusability and testability.",
+        message: "Component exceeds 150 lines. Split logic using custom hooks and/or refactor into container/presenter pattern.",
+        rationale: "Prevents 'God Components,' significantly improves reusability, testability, and reduces maintenance complexity.",
     },
     {
         id: "REACT-HOOKS-01",
@@ -18,24 +18,24 @@ exports.reactRules = [
         principle: "Rules of Hooks",
         severity: "BLOCKER",
         appliesTo: { framework: ["react"] },
-        check: (code) => /(if|for|while).*use(State|Effect|Memo|Callback)/s.test(code),
+        // Simplified regex to clearly target conditional or nested hook calls
+        check: (code) => /(if|for|while|switch).*?\{[\s\S]*?(use[A-Z]\w+)\s*\(/s.test(code),
         message: "Hooks must not be called inside loops, conditions, or nested functions.",
-        rationale: "React relies on consistent hook call order to track state correctly.",
+        rationale: "React relies on a consistent, static hook call order between renders to correctly manage state and effects.",
     },
     {
         id: "REACT-KEYS-01",
         area: "List Rendering",
         principle: "Reconciliation",
-        severity: "BLOCKER",
+        severity: "CRITICAL",
         appliesTo: { framework: ["react"] },
         check: (code) => {
-            // Match .map((item, index) => ...) or .map((item, index) => ...) with key={index}
-            const hasIndexParam = /\.map\s*\(\s*\([^,)]+,\s*index\s*\)/.test(code);
-            const hasIndexKey = /key\s*=\s*\{?\s*index\s*\}?/.test(code);
-            return hasIndexParam || hasIndexKey;
+            // Flags either map using index as parameter OR map using index/i as the key value
+            return (/\.map\s*\(\s*\([^,)]+,\s*(index|i)\s*\)/.test(code) ||
+                /key\s*=\s*\{?\s*(index|i)\s*\}?/.test(code));
         },
-        message: "Using array index as key. Use a stable, unique identifier instead.",
-        rationale: "Incorrect keys break React's reconciliation algorithm.",
+        message: "Using array index (`index` or `i`) as the `key` prop in dynamic lists. Use a stable, unique identifier from the data instead.",
+        rationale: "Incorrect keys break React's reconciliation algorithm, causing rendering bugs and state corruption when list items are added, removed, or reordered.",
     },
     {
         id: "REACT-SECURITY-01",
@@ -44,19 +44,13 @@ exports.reactRules = [
         severity: "CRITICAL",
         appliesTo: { framework: ["react"], scope: ["frontend"] },
         check: (code) => {
-            // Match HARDCODED_TOKEN or similar patterns
-            if (/HARDCODED[_\s-]?TOKEN/i.test(code))
-                return true;
-            // Match token=value or token: value patterns with quoted strings
-            if (/(?:token|password|secret|api[_-]?key|apikey)\s*[:=]\s*["'][^"']+["']/i.test(code))
-                return true;
-            // Match URLs with token parameters
-            if (/[?&](?:token|password|secret|api[_-]?key|apikey)\s*=\s*[A-Za-z0-9_-]{10,}/i.test(code))
+            // Enhanced check for common keywords with quoted values
+            if (/(?:token|password|secret|api[_-]?key|apikey|bearer)\s*[:=]\s*["'][A-Za-z0-9_-]{10,}["']/i.test(code))
                 return true;
             return false;
         },
-        message: "Hardcoded credentials, tokens, or secrets detected. Move to environment variables or secure storage.",
-        rationale: "Hardcoded secrets expose sensitive data in source code and version control.",
+        message: "Hardcoded credentials, tokens, or secrets detected. **Move to environment variables (`process.env.*`) immediately.**",
+        rationale: "Hardcoded secrets are visible in the client-side bundle and expose sensitive data to the public. ",
     },
     {
         id: "REACT-ERROR-01",
@@ -65,47 +59,70 @@ exports.reactRules = [
         severity: "HIGH",
         appliesTo: { framework: ["react"], scope: ["frontend"] },
         check: (code) => {
-            // Find all fetch calls
-            const fetchMatches = code.match(/fetch\s*\([^)]+\)/g);
-            if (!fetchMatches || fetchMatches.length === 0)
+            // Find all promises (fetch, axios, async/await blocks)
+            const promiseMatches = code.match(/fetch|axios|\basync\s+function/g);
+            if (!promiseMatches || promiseMatches.length === 0)
                 return false;
-            // Check if any fetch call chain doesn't have .catch()
-            for (const match of fetchMatches) {
-                const matchIndex = code.indexOf(match);
-                const afterMatch = code.substring(matchIndex);
-                // Look for .catch or try-catch within reasonable distance (next 500 chars)
-                const next500 = afterMatch.substring(0, 500);
-                if (!/\.catch\s*\(/.test(next500) &&
-                    !/try\s*\{[\s\S]{0,200}catch/.test(next500)) {
-                    return true;
-                }
-            }
+            // Simple check: are there async operation keywords without catch/try?
+            if ((code.includes("fetch") || code.includes("axios")) &&
+                !code.includes(".catch") &&
+                !code.includes("try"))
+                return true;
+            if (code.includes("await") && !code.includes("try"))
+                return true;
             return false;
         },
-        message: "Fetch calls without error handling. Add .catch() or try-catch blocks.",
-        rationale: "Unhandled network errors can crash the application or provide poor user experience.",
+        message: "Asynchronous calls (fetch, axios, await) are missing error handling. Add `.catch()` or `try-catch` blocks.",
+        rationale: "Unhandled promise rejections result in ungraceful crashes and poor user experience. All side effects must handle failure states.",
     },
     {
-        id: "REACT-HOOKS-02",
-        area: "Hooks Usage",
-        principle: "Dependency Arrays",
-        severity: "HIGH",
+        id: "REACT-HOOKS-03",
+        area: "Hooks Dependencies",
+        principle: "Predictability",
+        severity: "CRITICAL",
         appliesTo: { framework: ["react"] },
         check: (code) => {
-            // Match useEffect with empty dependency array - handle multi-line with [\s\S]
-            const useEffectPattern = /useEffect\s*\([^)]*\)\s*=>\s*\{([\s\S]*?)\}\s*,\s*\[\s*\]/g;
-            let match;
-            while ((match = useEffectPattern.exec(code)) !== null) {
-                const body = match[1];
-                // Check for state setters, fetch, or other side effects that might need dependencies
-                if (/(?:set[A-Z]\w*|fetch|console\.(?:log|error|warn))/.test(body)) {
-                    return true;
-                }
-            }
-            return false;
+            // Checks for any useEffect, useMemo, or useCallback using an empty dependency array `[]`
+            return /(useEffect|useMemo|useCallback)\s*\([^)]*\)\s*,\s*\[\s*\]\s*\)/s.test(code);
         },
-        message: "useEffect with empty dependency array may be missing dependencies. Review if all used values are included.",
-        rationale: "Missing dependencies can cause stale closures and unexpected behavior.",
+        message: "The dependency array is empty (`[]`). **CRITICAL REVIEW REQUIRED.** Ensure this is intentional and does not lead to stale closures.",
+        rationale: "An empty dependency array often indicates a missing dependency, leading to the hook's callback using 'stale' (old) values of state or props, causing subtle bugs.",
+    },
+    // --- New Rules Start Here ---
+    {
+        id: "REACT-PERF-02",
+        area: "Performance",
+        principle: "Memoization",
+        severity: "HIGH",
+        appliesTo: { framework: ["react"] },
+        // Flags inline object or function creation being passed to a child component
+        check: (code) => /<\s*[A-Z]\w+\s+[\s\S]*?(onClick|data|style|options)\s*=\s*\{\s*(\{|=>)\s*[\s\S]*?\}/s.test(code) && !/(useMemo|useCallback)/.test(code),
+        message: "Passing inline objects (`{...}`) or functions (`() => {...}`) as props to custom components without using `useMemo` or `useCallback`.",
+        rationale: "Inline creation generates a new reference on every parent render, defeating memoization (`React.memo`) on the child component and causing unnecessary re-renders.",
+    },
+    {
+        id: "REACT-A11Y-01",
+        area: "Accessibility (A11y)",
+        principle: "Usability",
+        severity: "HIGH",
+        appliesTo: { framework: ["react"] },
+        // Checks for generic elements being used for interaction (like a div) without explicit ARIA/role/tabIndex
+        check: (code) => /(<div|<\s*span)[\s\S]*?onClick/.test(code) &&
+            !/(role="button"|tabIndex)/i.test(code),
+        message: "Non-semantic interactive elements (`<div>` or `<span>` with `onClick`) must include `role='button'` and handle keyboard events (`onKeyDown`, `tabIndex`).",
+        rationale: "Semantic HTML (like `<button>`) is natively accessible. Using generic elements without ARIA breaks screen reader compatibility and keyboard navigation.",
+    },
+    {
+        id: "TS-EXPLICIT-01",
+        area: "TypeScript Typing",
+        principle: "Type Safety",
+        severity: "HIGH",
+        appliesTo: { language: ["typescript"], framework: ["react"] },
+        // Flags functions (especially components) that use implicit typing for props or state initialization
+        check: (code) => /const\s+[A-Z]\w+\s*=\s*\((props|\{\s*[^}]*\s*\})\s*\)\s*=>/.test(code) &&
+            !/(interface|type)\s+[A-Z]\w+Props/.test(code),
+        message: "Public component props and Custom Hook return types must be explicitly defined using interfaces or types.",
+        rationale: "Explicit contracts improve readability, aid external consumption, and prevent subtle type inference errors when the type definition is ambiguous.",
     },
 ];
 //# sourceMappingURL=react.js.map

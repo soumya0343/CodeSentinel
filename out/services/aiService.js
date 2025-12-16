@@ -45,7 +45,7 @@ async function runAIReview(files, context) {
     // SECONDARY: Attempt AI enhancement if available (optional, non-blocking)
     // Only try AI if API key is configured, and don't let it block the offline review
     try {
-        const config = vscode.workspace.getConfiguration("aiCodeReviewer");
+        const config = vscode.workspace.getConfiguration("codeSentinel");
         const apiKey = config.get("openaiApiKey");
         if (!apiKey || apiKey.trim() === "") {
             // No API key, return offline review immediately
