@@ -1,13 +1,17 @@
 {
   "name": "codesentinel",
   "displayName": "CodeSentinel",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "SoumyaGupta",
   "icon": "codeSenitel_logo.png",
   "description": "Offline-first code review with AI enhancement. Fast rule-based analysis with optional AI-powered insights for comprehensive code quality feedback.",
   "main": "./out/extension.js",
-  "engines": { "vscode": "^1.74.0" },
-  "activationEvents": ["*"],
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "activationEvents": [
+    "*"
+  ],
   "contributes": {
     "commands": [
       {
