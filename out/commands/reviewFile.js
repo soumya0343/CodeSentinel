@@ -35,11 +35,13 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reviewCurrentFile = reviewCurrentFile;
 const vscode = __importStar(require("vscode"));
-const aiService_1 = require("../services/aiService");
+const logger_1 = require("../logger");
 async function reviewCurrentFile() {
     const editor = vscode.window.activeTextEditor;
-    if (!editor)
+    if (!editor) {
+        vscode.window.showWarningMessage("CodeSentinel: No active editor. Open a file first.");
         return;
+    }
     const scope = await vscode.window.showQuickPick(["frontend", "backend", "both"], { placeHolder: "Select code scope" });
     if (!scope)
         return;
@@ -74,11 +76,22 @@ async function reviewCurrentFile() {
         language: editor.document.languageId,
         content: code,
     };
-    const review = await (0, aiService_1.runAIReview)([currentFile], context);
-    const doc = await vscode.workspace.openTextDocument({
-        content: review,
-        language: "markdown",
-    });
-    vscode.window.showTextDocument(doc, { preview: false });
+    try {
+        (0, logger_1.startReview)();
+        const { runAIReview } = await Promise.resolve().then(() => __importStar(require("../services/aiService")));
+        const review = await runAIReview([currentFile], context);
+        const doc = await vscode.workspace.openTextDocument({
+            content: review,
+            language: "markdown",
+        });
+        await vscode.window.showTextDocument(doc, { preview: false });
+        await vscode.commands.executeCommand("markdown.showPreviewToSide", doc.uri);
+    }
+    catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        vscode.window.showErrorMessage("CodeSentinel error: " + msg);
+        const { error: logError } = await Promise.resolve().then(() => __importStar(require("../logger")));
+        logError("reviewCurrentFile: " + msg);
+    }
 }
 //# sourceMappingURL=reviewFile.js.map

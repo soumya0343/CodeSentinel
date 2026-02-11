@@ -1,11 +1,14 @@
 import * as vscode from "vscode";
-import { runAIReview } from "../services/aiService";
+import { startReview } from "../logger";
 import { ReviewScope, ReviewContext } from "../types/reviewContext";
 import { ReviewedFile } from "../types/reviewedFile";
 
 export async function reviewCurrentFile() {
   const editor = vscode.window.activeTextEditor;
-  if (!editor) return;
+  if (!editor) {
+    vscode.window.showWarningMessage("CodeSentinel: No active editor. Open a file first.");
+    return;
+  }
 
   const scope = await vscode.window.showQuickPick(
     ["frontend", "backend", "both"],
@@ -49,12 +52,22 @@ export async function reviewCurrentFile() {
     content: code,
   };
 
-  const review = await runAIReview([currentFile], context);
+  try {
+    startReview();
+    const { runAIReview } = await import("../services/aiService");
+    const review = await runAIReview([currentFile], context);
 
-  const doc = await vscode.workspace.openTextDocument({
-    content: review,
-    language: "markdown",
-  });
+    const doc = await vscode.workspace.openTextDocument({
+      content: review,
+      language: "markdown",
+    });
 
-  vscode.window.showTextDocument(doc, { preview: false });
+    await vscode.window.showTextDocument(doc, { preview: false });
+    await vscode.commands.executeCommand("markdown.showPreviewToSide", doc.uri);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    vscode.window.showErrorMessage("CodeSentinel error: " + msg);
+    const { error: logError } = await import("../logger");
+    logError("reviewCurrentFile: " + msg);
+  }
 }

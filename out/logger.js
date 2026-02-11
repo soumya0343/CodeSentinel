@@ -33,24 +33,42 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.activate = activate;
+exports.log = log;
+exports.warn = warn;
+exports.error = error;
+exports.startReview = startReview;
+exports.showLog = showLog;
 const vscode = __importStar(require("vscode"));
-const reviewWorkspace_1 = require("./commands/reviewWorkspace");
-const reviewFile_1 = require("./commands/reviewFile");
-function activate(ctx) {
-    // Ensure commands are visible: activate on startup (activationEvents: ["*"])
-    ctx.subscriptions.push(vscode.commands.registerCommand("codeSentinel.reviewWorkspace", reviewWorkspace_1.reviewWorkspace), vscode.commands.registerCommand("codeSentinel.reviewFile", reviewFile_1.reviewCurrentFile), vscode.commands.registerCommand("codeSentinel.showLogs", async () => {
-        const { showLog } = await Promise.resolve().then(() => __importStar(require("./logger")));
-        showLog();
-    }), vscode.commands.registerCommand("codeSentinel.testGemini", async () => {
-        const { testGeminiConnection } = await Promise.resolve().then(() => __importStar(require("./services/geminiService")));
-        const result = await testGeminiConnection();
-        if (result.success) {
-            vscode.window.showInformationMessage("Gemini Connection: " + result.message);
-        }
-        else {
-            vscode.window.showErrorMessage("Gemini Connection Failed: " + result.message);
-        }
-    }));
+let channel;
+function getChannel() {
+    if (!channel) {
+        channel = vscode.window.createOutputChannel("CodeSentinel");
+    }
+    return channel;
 }
-//# sourceMappingURL=extension.js.map
+function log(msg) {
+    const c = getChannel();
+    c.appendLine(`[${new Date().toISOString().slice(11, 23)}] ${msg}`);
+    console.log("[CodeSentinel]", msg);
+}
+function warn(msg) {
+    const c = getChannel();
+    c.appendLine(`[${new Date().toISOString().slice(11, 23)}] WARN ${msg}`);
+    console.warn("[CodeSentinel]", msg);
+}
+function error(msg) {
+    const c = getChannel();
+    c.appendLine(`[${new Date().toISOString().slice(11, 23)}] ERROR ${msg}`);
+    console.error("[CodeSentinel]", msg);
+}
+/** Call once when a review starts so the user sees the channel and we have a clear log block. */
+function startReview() {
+    const c = getChannel();
+    c.appendLine("");
+    c.appendLine("--- CodeSentinel review ---");
+    c.show(true);
+}
+function showLog() {
+    getChannel().show(true);
+}
+//# sourceMappingURL=logger.js.map

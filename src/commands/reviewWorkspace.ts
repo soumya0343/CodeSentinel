@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
+import { startReview } from "../logger";
 import { ReviewedFile } from "../types/reviewedFile";
 import { ReviewContext, ReviewScope } from "../types/reviewContext";
-import { runAIReview } from "../services/aiService";
 
 export async function reviewWorkspace() {
   const scope = await vscode.window.showQuickPick(
@@ -85,7 +85,9 @@ export async function reviewWorkspace() {
       title: `Reviewing ${files.length} files...`,
       cancellable: false,
     },
-    async (progress) => {
+    async () => {
+      startReview();
+      const { runAIReview } = await import("../services/aiService");
       const review = await runAIReview(files, context);
 
       const doc = await vscode.workspace.openTextDocument({
@@ -93,7 +95,8 @@ export async function reviewWorkspace() {
         language: "markdown",
       });
 
-      vscode.window.showTextDocument(doc, { preview: false });
+      await vscode.window.showTextDocument(doc, { preview: false });
+      await vscode.commands.executeCommand("markdown.showPreviewToSide", doc.uri);
     }
   );
 }

@@ -35,7 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reviewWorkspace = reviewWorkspace;
 const vscode = __importStar(require("vscode"));
-const aiService_1 = require("../services/aiService");
+const logger_1 = require("../logger");
 async function reviewWorkspace() {
     const scope = await vscode.window.showQuickPick(["frontend", "backend", "both"], { placeHolder: "Select code scope" });
     if (!scope)
@@ -100,13 +100,16 @@ async function reviewWorkspace() {
         location: vscode.ProgressLocation.Notification,
         title: `Reviewing ${files.length} files...`,
         cancellable: false,
-    }, async (progress) => {
-        const review = await (0, aiService_1.runAIReview)(files, context);
+    }, async () => {
+        (0, logger_1.startReview)();
+        const { runAIReview } = await Promise.resolve().then(() => __importStar(require("../services/aiService")));
+        const review = await runAIReview(files, context);
         const doc = await vscode.workspace.openTextDocument({
             content: review,
             language: "markdown",
         });
-        vscode.window.showTextDocument(doc, { preview: false });
+        await vscode.window.showTextDocument(doc, { preview: false });
+        await vscode.commands.executeCommand("markdown.showPreviewToSide", doc.uri);
     });
 }
 //# sourceMappingURL=reviewWorkspace.js.map

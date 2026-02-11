@@ -1,0 +1,14 @@
+# Never package secrets
+.env
+.env.*
+!.env.example
+
+# Source and dev-only (extension runs from out/)
+src/
+scripts/
+tsconfig.json
+.vscode/
+.gitignore
+package-lock.json
+node_modules/
+*.vsix

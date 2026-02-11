@@ -35,35 +35,94 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runAIReview = runAIReview;
 const vscode = __importStar(require("vscode"));
+const logger_1 = require("../logger");
 const fallbackService_1 = require("./fallbackService");
+const geminiService_1 = require("./geminiService");
 const openAiService_1 = require("./openAiService");
 const promptBuilder_1 = require("./promptBuilder");
-async function runAIReview(files, context) {
-    // PRIMARY: Always perform offline rule-based analysis first (fast, reliable)
-    // This is the core functionality and should always run
-    const offlineReview = (0, fallbackService_1.runFallbackReview)(files, context);
-    // SECONDARY: Attempt AI enhancement if available (optional, non-blocking)
-    // Only try AI if API key is configured, and don't let it block the offline review
-    try {
-        const config = vscode.workspace.getConfiguration("codeSentinel");
-        const apiKey = config.get("openaiApiKey");
-        if (!apiKey || apiKey.trim() === "") {
-            // No API key, return offline review immediately
-            return offlineReview;
-        }
-        // Attempt AI with timeout - don't wait more than 3 seconds
-        const aiReviewPromise = (0, openAiService_1.runOpenAIReview)((0, promptBuilder_1.buildPrompt)(files, context));
-        const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(""), 3000));
-        const aiReview = await Promise.race([aiReviewPromise, timeoutPromise]);
-        // Return offline review enhanced with AI insights if AI succeeds quickly
-        if (aiReview && aiReview.trim() !== "") {
-            return `${offlineReview}\n\n---\n\n## 🤖 AI-Enhanced Insights\n\n${aiReview}`;
-        }
-        return offlineReview;
+const GEMINI_GET_KEY_URL = "https://aistudio.google.com/apikey";
+/** Ensure AI response is raw Markdown (strip optional markdown code fence so it renders). */
+function asMarkdown(raw) {
+    let t = raw.trim();
+    if (t.startsWith("```")) {
+        const firstLineEnd = t.indexOf("\n");
+        if (firstLineEnd !== -1)
+            t = t.slice(firstLineEnd + 1);
+        else
+            t = t.replace(/^```(?:markdown|md)?\s*/, "");
     }
-    catch (error) {
-        // AI not available or failed, return reliable offline review
-        return offlineReview;
+    if (t.endsWith("```"))
+        t = t.slice(0, t.length - 3).trimEnd();
+    return t;
+}
+function hasOpenAIKey() {
+    const config = vscode.workspace.getConfiguration("codeSentinel");
+    const apiKey = config.get("openaiApiKey");
+    return !!apiKey?.trim();
+}
+/** One-time nudge when user runs review without a Gemini key: offer to get key or open Settings. */
+function showNoKeyHint() {
+    vscode.window
+        .showWarningMessage("CodeSentinel: Add a Gemini API key to enable AI-powered review.", "Get API Key", "Open Settings")
+        .then((choice) => {
+        if (choice === "Get API Key") {
+            vscode.env.openExternal(vscode.Uri.parse(GEMINI_GET_KEY_URL));
+        }
+        else if (choice === "Open Settings") {
+            vscode.commands.executeCommand("workbench.action.openSettings", "codeSentinel.geminiApiKey");
+        }
+    });
+}
+async function runAIReview(files, context) {
+    const offlineReview = (0, fallbackService_1.runFallbackReview)(files, context);
+    const prompt = (0, promptBuilder_1.buildPrompt)(files, context);
+    const timeoutMs = 90000;
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(""), timeoutMs));
+    const runGeminiSafe = () => (0, geminiService_1.runGeminiReview)(prompt).catch((e) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        (0, logger_1.warn)("Gemini failed: " + msg);
+        return "";
+    });
+    try {
+        const geminiKeyPresent = (0, geminiService_1.getGeminiKeySource)() !== "none";
+        if (geminiKeyPresent) {
+            vscode.window.setStatusBarMessage("CodeSentinel: Reviewing with Gemini...", 5000);
+            const aiReview = await Promise.race([runGeminiSafe(), timeoutPromise]);
+            if (aiReview?.trim()) {
+                return `## 🤖 AI Insights (Gemini)\n\n${asMarkdown(aiReview)}\n\n---\n\n## 📋 Rule-based Review\n\n${offlineReview}`;
+            }
+            vscode.window.showWarningMessage("CodeSentinel: Gemini request failed. Showing offline review only.");
+        }
+        else {
+            showNoKeyHint();
+        }
+        if (hasOpenAIKey()) {
+            vscode.window.setStatusBarMessage("CodeSentinel: Trying OpenAI fallback...", 5000);
+            const aiReview = await Promise.race([
+                (0, openAiService_1.runOpenAIReview)(prompt).catch((e) => {
+                    const msg = e instanceof Error ? e.message : String(e);
+                    (0, logger_1.warn)("OpenAI failed: " + msg);
+                    return "";
+                }),
+                timeoutPromise,
+            ]);
+            if (aiReview?.trim()) {
+                return `## 🤖 AI Insights (OpenAI)\n\n${asMarkdown(aiReview)}\n\n---\n\n## 📋 Rule-based Review\n\n${offlineReview}`;
+            }
+        }
+        let aiNote = "";
+        if (geminiKeyPresent) {
+            aiNote = "\n\n---\n**NOTE:** AI review failed or timed out. Showing offline review only.";
+        }
+        else {
+            aiNote = "\n\n---\n**NOTE:** No AI keys configured. Add a Gemini API key in Settings to enable AI review.";
+        }
+        return offlineReview + aiNote;
+    }
+    catch (e) {
+        const err = e instanceof Error ? e.message : String(e);
+        (0, logger_1.error)("CodeSentinel: " + err);
+        return offlineReview + "\n\n---\n**NOTE:** An error occurred during review.";
     }
 }
 //# sourceMappingURL=aiService.js.map
